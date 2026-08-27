@@ -6,3 +6,7 @@
 
 # pycache
 __pycache__/
+
+# generated plot
+public/stromdata.png
+public/stromdata.tmp.png

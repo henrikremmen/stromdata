@@ -1,7 +1,12 @@
 import os
+import argparse
 from datetime import datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 
@@ -11,9 +16,10 @@ from getdata import get_consumption, get_spot_prices, to_kwh
 NORWAY = ZoneInfo("Europe/Oslo")
 PRICE_AREA = os.getenv("PRICE_AREA", "NO3")
 VAT_FACTOR = 1.25
+ROOT = Path(__file__).resolve().parent
 
 
-def main():
+def main(output_file):
     end = datetime.now(NORWAY)
     start = end - timedelta(days=7)
 
@@ -114,13 +120,42 @@ def main():
 
     total_kwh = sum(consumption_by_time[time] for time in common_times)
     total_cost = sum(cost_values)
+    figure.patch.set_facecolor("#000000")
+    for axis in axes:
+        axis.set_facecolor("#000000")
+        axis.tick_params(colors="#dddddd")
+        axis.xaxis.label.set_color("#dddddd")
+        axis.yaxis.label.set_color("#dddddd")
+        axis.title.set_color("#ffffff")
+        for spine in axis.spines.values():
+            spine.set_color("#555555")
+
     figure.suptitle(
         f"{total_kwh:.1f} kWh · {total_cost:.2f} kr i spotkostnad",
+        color="#ffffff",
         fontsize=14,
     )
     figure.tight_layout()
-    plt.show()
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    temporary_file = output_file.with_name(f"{output_file.stem}.tmp.png")
+    figure.savefig(
+        temporary_file,
+        dpi=150,
+        bbox_inches="tight",
+        facecolor=figure.get_facecolor(),
+    )
+    plt.close(figure)
+    temporary_file.replace(output_file)
+    print(f"Lagret graf: {output_file}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=ROOT / "public" / "stromdata.png",
+    )
+    arguments = parser.parse_args()
+    main(arguments.output.resolve())
